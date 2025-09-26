@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { SignupDto } from './dto/signup.dts';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -36,5 +37,13 @@ export class AuthController {
     @Body() verifyEmailDto: VerifyEmailDto,
   ): Promise<{ message: string; user: any }> {
     return this.authService.verifyEmail(verifyEmailDto);
+  }
+
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend verification OTP' })
+  @ApiResponse({ status: 200, description: 'OTP sent successfully' })
+  async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
+    return this.authService.resendOtp(resendOtpDto.email);
   }
 }
