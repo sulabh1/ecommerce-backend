@@ -88,6 +88,32 @@ export class AuthService {
       return { message: 'Email verification failed', user: null };
     }
   }
+
+  async resendOtp(email: string): Promise<{ message: string }> {
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      if (user.isEmailVerified) {
+        throw new BadRequestException('Email is already varified');
+      }
+
+      const otp = await this.otpService.generateOtp(user.id, user.email);
+      await this.mailService.sentOtpEmail(
+        user.email,
+        otp || '',
+        `${user.firstName} ${user.lastName}`,
+      );
+
+      return { message: 'OTP sent successfully' };
+    } catch (error) {
+      console.log(error);
+      return { message: 'Failed to send OTP' };
+    }
+  }
   private createPayload(user: User): JwtPayload {
     return {
       sub: user.id,
