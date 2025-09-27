@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { UsersModule } from 'src/users/users.module';
+import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { JwtAuthService } from './jwt.service';
 import { AuthController } from './auth.controller';
@@ -10,6 +10,7 @@ import { MyMailerModule } from 'src/mailer/mailer.modules';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
 import { OtpRepository } from './otp.repository';
+import { ErrorsModule } from '../errors/errors.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { OtpRepository } from './otp.repository';
     }),
     UsersModule,
     MyMailerModule,
+    ErrorsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthService, OtpService, OtpRepository],

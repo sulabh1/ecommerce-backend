@@ -7,8 +7,8 @@ import {
   IsOptional,
   IsPhoneNumber,
 } from 'class-validator';
-import { Otp } from 'src/auth/entities/otp.entity';
-import { BaseEntity } from 'src/common/entities/base.entity';
+import { Otp } from '../../auth/entities/otp.entity';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { Column, Entity, Index, OneToMany } from 'typeorm';
 
 export enum UserRole {

@@ -7,7 +7,7 @@ import {
   IsStrongPassword,
   MinLength,
 } from 'class-validator';
-import { UserRole } from 'src/users/entities/user.entity';
+import { UserRole } from '../../users/entities/user.entity';
 
 export class SignupDto {
   @ApiProperty({ example: 'user@example.com' })

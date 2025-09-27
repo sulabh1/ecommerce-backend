@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -17,7 +18,7 @@ export class UsersService {
       const userData = { ...signupDto, password: hashedPassword };
       return this.userRepository.createUser(userData);
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -29,14 +30,22 @@ export class UsersService {
     return `This action returns a #${id} user`;
   }
 
-  update(id: string, updateUserDto: UpdateUserDto) {
-    return this.userRepository.update(id, updateUserDto);
+  update(id: string, updateUserDto: UpdateUserDto): Promise<any> {
+    try {
+      return this.userRepository.update(id, updateUserDto);
+    } catch (error) {
+      throw error;
+    }
   }
 
   remove(id: number) {
     return `This action removes a #${id} user`;
   }
   findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findByEmail(email);
+    try {
+      return this.userRepository.findByEmail(email);
+    } catch (error) {
+      throw error;
+    }
   }
 }

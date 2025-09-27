@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { createDatabaseConfig } from './config/configuration';
 import { AuthModule } from './auth/auth.modules';
+import { ErrorsModule } from './errors/errors.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuthModule } from './auth/auth.modules';
         return config;
       },
     }),
+    ErrorsModule,
     UsersModule,
     AuthModule,
   ],

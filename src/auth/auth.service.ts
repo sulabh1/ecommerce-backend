@@ -1,19 +1,22 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+import { Injectable } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
 import { JwtAuthService, JwtPayload } from './jwt.service';
 import { SignupDto } from './dto/signup.dts';
-import { User } from 'src/users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
 import { OtpService } from './otp.service';
-import { MailService } from 'src/mailer/mail.service';
+import { MailService } from '../mailer/mail.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ErrorHandlerService } from '../errors/error-handler.service';
+import {
+  AuthenticationError,
+  ConflictError,
+  NotFoundError,
+} from '../errors/custom.errors';
 
 @Injectable()
 export class AuthService {
@@ -23,18 +26,18 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly otpService: OtpService,
     private readonly mailService: MailService,
+    private errorHandler: ErrorHandlerService,
   ) {}
   async signup(signupDto: SignupDto): Promise<any> {
     try {
       const existingUser = await this.usersService.findByEmail(signupDto.email);
       if (existingUser) {
-        throw new ConflictException('Email already exists');
+        throw new AuthenticationError('Invalid credentials');
       }
       const user = await this.usersService.create(signupDto);
 
       if (user) {
         const otp = await this.otpService.generateOtp(user?.id!, user?.email!);
-        console.log(user.id, 'user data');
 
         await this.mailService.sentOtpEmail(
           user.email,
@@ -53,7 +56,7 @@ export class AuthService {
         };
       }
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -65,13 +68,13 @@ export class AuthService {
       const isOtpValid = await this.otpService.verifyOtp(email, otp);
 
       if (!isOtpValid) {
-        throw new BadRequestException('Invalid or expired otp');
+        throw new AuthenticationError('Invalid or expired OTP');
       }
 
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {
-        throw new BadRequestException('User not found');
+        throw new NotFoundError('User');
       }
 
       const updateUser = await this.usersService.update(user.id, {
@@ -84,8 +87,7 @@ export class AuthService {
         user: updateUser,
       };
     } catch (error) {
-      console.log(error);
-      return { message: 'Email verification failed', user: null };
+      throw error;
     }
   }
 
@@ -94,11 +96,11 @@ export class AuthService {
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {
-        throw new BadRequestException('User not found');
+        throw new NotFoundError('User');
       }
 
       if (user.isEmailVerified) {
-        throw new BadRequestException('Email is already varified');
+        throw new ConflictError('Email is already verified');
       }
 
       const otp = await this.otpService.generateOtp(user.id, user.email);
@@ -110,8 +112,7 @@ export class AuthService {
 
       return { message: 'OTP sent successfully' };
     } catch (error) {
-      console.log(error);
-      return { message: 'Failed to send OTP' };
+      throw error;
     }
   }
   private createPayload(user: User): JwtPayload {

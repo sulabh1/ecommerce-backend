@@ -1,120 +1,193 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import {
-  Catch,
   ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
+  Catch,
   ArgumentsHost,
+  HttpStatus,
 } from '@nestjs/common';
-import { JsonWebTokenError, TokenExpiredError } from '@nestjs/jwt';
+import { Request, Response } from 'express';
 import { QueryFailedError } from 'typeorm';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { AppError } from '../errors/custom.errors';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalExceptionFilter.name);
-
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<any>();
+    const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    let status: HttpStatus;
-    let message: string | object;
+    let status: number;
+    let message: string;
     let errorCode: string;
+    let details: any;
 
-    if (exception instanceof QueryFailedError) {
-      const pgError = exception as any;
-
-      switch (pgError.code) {
-        case '23505': //Unique violation
-          status = HttpStatus.CONFLICT;
-          message = 'Resource already exist';
-          errorCode = 'UNIQUE_VIOLATION';
-          break;
-
-        case '23503': //Foreign key violation
-          status = HttpStatus.BAD_REQUEST;
-          message = 'Referenced resource not found';
-          errorCode = 'FOREIGN_KEY_VIOLATION';
-          break;
-
-        case '20502': //Not null violation
-          status = HttpStatus.BAD_REQUEST;
-          message = 'Required field is missing';
-          errorCode = 'NOT_NULL_VIOLATION';
-          break;
-
-        case '22p02': //Invalid text representation
-          status = HttpStatus.BAD_REQUEST;
-          message = 'Invalid data format';
-          errorCode = 'INVALID_NPUT';
-          break;
-
-        case '42703': //Undefined column
-          status = HttpStatus.INTERNAL_SERVER_ERROR;
-          message = 'Database configuration error';
-          errorCode = 'UNDEFINED_COLUMN';
-          break;
-
-        default:
-          status = HttpStatus.INTERNAL_SERVER_ERROR;
-          message = 'Database error occurred';
-          errorCode = 'DATABASE_ERROR';
-      }
-      this.logger.error(`Database Error [${pgError.code}]:${pgError.message}`);
-    } else if (exception instanceof TokenExpiredError) {
-      status = HttpStatus.UNAUTHORIZED;
+    // Handle our custom AppError
+    if (exception instanceof AppError) {
+      status = exception.statusCode;
+      message = exception.message;
+      errorCode = exception.errorCode;
+      details = exception.details;
+    }
+    // Handle TypeORM errors
+    else if (exception instanceof QueryFailedError) {
+      const error = exception as any;
+      const result = this.handleDatabaseError(error);
+      status = result.status;
+      message = result.message;
+      errorCode = result.errorCode;
+      details = result.details;
+    }
+    // Handle JWT errors
+    else if (exception instanceof TokenExpiredError) {
+      status = 401;
       message = 'Token has expired';
       errorCode = 'TOKEN_EXPIRED';
     } else if (exception instanceof JsonWebTokenError) {
-      status = HttpStatus.UNAUTHORIZED;
+      status = 401;
       message = 'Invalid token';
       errorCode = 'INVALID_TOKEN';
-    } else if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      message = exception.getResponse();
+    }
+    // Handle NestJS HTTP exceptions
+    else if (exception instanceof Error && 'getStatus' in exception) {
+      const httpException = exception as any;
+      status = httpException.getStatus();
+      message = httpException.message;
       errorCode = 'HTTP_ERROR';
-    } else if (this.isNodemailerError(exception)) {
-      status = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'Email service temprory unavailable';
-      errorCode = 'EMAIL_SERVICE_ERROR';
-      this.logger.error(`Nodemailer Error: ${(exception as Error).message}`);
-    } else {
+
+      // Handle class-validator errors
+      if (httpException.getResponse) {
+        const response = httpException.getResponse();
+        if (typeof response === 'object' && 'message' in response) {
+          message = Array.isArray(response.message)
+            ? response.message[0]
+            : response.message;
+          details = response.message;
+        }
+      }
+    }
+    // Handle nodemailer errors
+    else if (this.isNodemailerError(exception)) {
+      const result = this.handleNodemailerError(exception);
+      status = result.status;
+      message = result.message;
+      errorCode = result.errorCode;
+      details = result.details;
+    }
+    // Handle all other errors
+    else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';
       errorCode = 'INTERNAL_ERROR';
-      this.logger.error(`Unexpected Error: ${exception}`);
     }
+
+    // Log the error
     this.logError(request, exception);
 
     response.status(status).json({
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      message: message,
-      errorCode: errorCode,
+      success: false,
+      error: {
+        code: errorCode,
+        message: message,
+        details: details,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      },
     });
   }
 
+  private handleDatabaseError(error: any): {
+    status: number;
+    message: string;
+    errorCode: string;
+    details?: any;
+  } {
+    switch (error.code) {
+      case '23505': // Unique violation
+        return {
+          status: 409,
+          message: 'Resource already exists',
+          errorCode: 'UNIQUE_VIOLATION',
+          details: { constraint: error.constraint },
+        };
+      case '23503': // Foreign key violation
+        return {
+          status: 400,
+          message: 'Referenced resource not found',
+          errorCode: 'FOREIGN_KEY_VIOLATION',
+        };
+      case '23502': // Not null violation
+        return {
+          status: 400,
+          message: 'Required field is missing',
+          errorCode: 'NOT_NULL_VIOLATION',
+        };
+      case '22P02': // Invalid text representation
+        return {
+          status: 400,
+          message: 'Invalid data format',
+          errorCode: 'INVALID_INPUT',
+        };
+      default:
+        return {
+          status: 500,
+          message: 'Database operation failed',
+          errorCode: 'DATABASE_ERROR',
+          details: { code: error.code },
+        };
+    }
+  }
+
+  private handleNodemailerError(error: any): {
+    status: number;
+    message: string;
+    errorCode: string;
+    details?: any;
+  } {
+    switch (error.code) {
+      case 'EAUTH':
+        return {
+          status: 500,
+          message: 'Email authentication failed',
+          errorCode: 'EMAIL_AUTH_ERROR',
+          details: { service: error.service },
+        };
+      case 'EENVELOPE':
+        return {
+          status: 400,
+          message: 'Invalid email parameters',
+          errorCode: 'EMAIL_VALIDATION_ERROR',
+        };
+      case 'ECONNECTION':
+        return {
+          status: 500,
+          message: 'Email service connection failed',
+          errorCode: 'EMAIL_CONNECTION_ERROR',
+        };
+      default:
+        return {
+          status: 500,
+          message: 'Email delivery failed',
+          errorCode: 'EMAIL_ERROR',
+          details: { code: error.code },
+        };
+    }
+  }
+
   private isNodemailerError(error: any): boolean {
-    return (
-      error &&
-      typeof error.message === 'string' &&
-      (error.code !== undefined || error.command !== undefined)
-    );
+    return error && error.code && error.command;
   }
 
   private logError(request: Request, exception: unknown): void {
-    const errorLog = {
+    console.error({
       timestamp: new Date().toISOString(),
+      path: request.url,
       method: request.method,
-      url: request.url,
-      exception:
+      error:
         exception instanceof Error
           ? {
               name: exception.name,
@@ -122,7 +195,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
               stack: exception.stack,
             }
           : exception,
-    };
-    this.logger.error(JSON.stringify(errorLog));
+    });
   }
 }
