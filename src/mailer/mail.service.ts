@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
@@ -25,9 +26,8 @@ export class MailService {
           expiryMinutes: this.configService.get('OTP_EXPIRY_MINUTES', 10),
         },
       });
-    } catch (err) {
-      console.error('Failed to send email', err);
-      throw new Error('Failed to send verification email');
+    } catch (error) {
+      throw error;
     }
   }
 }

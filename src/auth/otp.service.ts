@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -46,9 +47,8 @@ export class OtpService {
       await this.otpRepository.saveOtp(userData);
 
       return otp;
-    } catch (err) {
-      console.log(err);
-      return;
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -68,8 +68,7 @@ export class OtpService {
 
       return true;
     } catch (error) {
-      console.log(error);
-      return false;
+      throw error;
     }
   }
 

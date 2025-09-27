@@ -1,5 +1,6 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService as NestJwtService } from '@nestjs/jwt';
 
@@ -23,18 +24,25 @@ export class JwtAuthService {
   ) {}
 
   async generateTokens(payload: JwtPayload): Promise<Tokens> {
-    const accessToken = await this.jwtService.signAsync(payload);
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
-    });
+    try {
+      const accessToken = await this.jwtService.signAsync(payload);
+      const refreshToken = await this.jwtService.signAsync(payload, {
+        expiresIn: this.configService.get<string>(
+          'JWT_REFRESH_EXPIRES_IN',
+          '7d',
+        ),
+      });
 
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: this.parseExpiresIn(
-        this.configService.get<string>('JWT_EXPIRES_IN', '15md'),
-      ),
-    };
+      return {
+        accessToken,
+        refreshToken,
+        expiresIn: this.parseExpiresIn(
+          this.configService.get<string>('JWT_EXPIRES_IN', '15md'),
+        ),
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
   async verifyToken(token: string): Promise<JwtPayload> {
@@ -42,13 +50,17 @@ export class JwtAuthService {
       return await this.jwtService.verifyAsync<JwtPayload>(token);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw error;
     }
   }
 
   async refreshToken(refreshToken: string): Promise<Tokens> {
-    const payload = await this.verifyToken(refreshToken);
-    return this.generateTokens(payload);
+    try {
+      const payload = await this.verifyToken(refreshToken);
+      return this.generateTokens(payload);
+    } catch (error) {
+      throw error;
+    }
   }
 
   private parseExpiresIn(expiresIn: string): number {
