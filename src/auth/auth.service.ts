@@ -122,7 +122,6 @@ export class AuthService {
       if (!user) {
         throw new AuthenticationError('Invalid username or password');
       }
-      console.log(user);
 
       const isCorrectPassword = await bcrypt.compare(password, user.password);
 

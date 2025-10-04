@@ -115,6 +115,17 @@ describe('AuthService', () => {
         password:
           '$2b$12$D3YIB8J8/DAfwwkI4IxpLuWeGMZrXkJBusiRJR9gKYJ27PrJ8TpZi',
       };
+
+      const expectedUserWithoutPassword = {
+        id: 'uuid-123',
+        email: 'test@example.com',
+        firstName: 'rita',
+        lastName: 'ora',
+        phoneNumber: '+9779809809898',
+        isActive: false,
+        isEmailVerified: false,
+      };
+
       mockUsersService.findByEmail.mockResolvedValue(null);
       mockUsersService.create.mockResolvedValue(createdUser);
       mockOtpService.generateOtp.mockResolvedValue('123456');
@@ -139,7 +150,7 @@ describe('AuthService', () => {
           message:
             'Registration successful. Please check your mail for verification Otp',
           tokens: mockTokens,
-          user: createdUser,
+          user: expectedUserWithoutPassword,
         }),
       );
     });
@@ -169,11 +180,6 @@ describe('AuthService', () => {
     const loginDto: LoginDto = {
       email: 'test@example.com',
       password: 'Password12345',
-    };
-
-    const mockUserWithPassword = {
-      ...mockUser,
-      password: '$2b$12$hashedPassword123',
     };
 
     it('should login successfully', async () => {
