@@ -1,5 +1,3 @@
-/* eslint-disable no-useless-catch */
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';

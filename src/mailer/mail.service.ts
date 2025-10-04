@@ -1,5 +1,3 @@
-/* eslint-disable no-useless-catch */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
