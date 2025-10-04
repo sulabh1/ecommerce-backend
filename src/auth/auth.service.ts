@@ -1,8 +1,5 @@
-/* eslint-disable no-useless-catch */
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { JwtAuthService, JwtPayload } from './jwt.service';
 import { SignupDto } from './dto/signup.dts';
@@ -17,6 +14,7 @@ import {
   ConflictError,
   NotFoundError,
 } from '../errors/custom.errors';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -50,9 +48,9 @@ export class AuthService {
 
         return {
           message:
-            'Registration successful. Please check yout mail for verification Otp',
+            'Registration successful. Please check your mail for verification Otp',
           tokens,
-          user,
+          user: this.excludePassword(user),
         };
       }
     } catch (error) {
@@ -115,6 +113,48 @@ export class AuthService {
       throw error;
     }
   }
+
+  async login(loginDto: LoginDto): Promise<any> {
+    const { email, password } = loginDto;
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        throw new AuthenticationError('Invalid username or password');
+      }
+      console.log(user);
+
+      const isCorrectPassword = await bcrypt.compare(password, user.password);
+
+      if (!isCorrectPassword) {
+        throw new AuthenticationError('Invalid username or password');
+      }
+
+      if (!user.isActive && !user.isEmailVerified) {
+        throw new AuthenticationError(
+          'User is not active and verified. Please verify your email',
+        );
+      }
+
+      const tokens = await this.jwtAuthService.generateTokens(
+        this.createPayload(user),
+      );
+
+      return {
+        message: 'Login successful.',
+        tokens,
+        user: this.excludePassword(user),
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private excludePassword(user: User): any {
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
   private createPayload(user: User): JwtPayload {
     return {
       sub: user.id,

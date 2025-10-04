@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -9,6 +5,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { SignupDto } from './dto/signup.dts';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
+import { LoginDto } from './dto/login.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -45,5 +42,13 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
   async resendOtp(@Body() resendOtpDto: ResendOtpDto) {
     return this.authService.resendOtp(resendOtpDto.email);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login to get access' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Login successfully' })
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 }

@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/await-thenable */
+import * as bcrypt from 'bcrypt';
+
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
@@ -16,6 +14,12 @@ import {
   ConflictError,
   NotFoundError,
 } from '../errors/custom.errors';
+import { LoginDto } from './dto/login.dto';
+
+jest.mock('bcrypt', () => ({
+  compare: jest.fn(),
+  hash: jest.fn(),
+}));
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -55,6 +59,13 @@ describe('AuthService', () => {
     phoneNumber: '+9779809809898',
     isActive: false,
     isEmailVerified: false,
+  };
+
+  const mockUserWithPassword = {
+    ...mockUser,
+    password: '$2b$12$D3YIB8J8/DAfwwkI4IxpLuWeGMZrXkJBusiRJR9gKYJ27PrJ8TpZi',
+    isActive: true,
+    isEmailVerified: true,
   };
 
   const mockTokens = {
@@ -99,8 +110,13 @@ describe('AuthService', () => {
     };
 
     it('should sign up user successfully', async () => {
+      const createdUser = {
+        ...mockUser,
+        password:
+          '$2b$12$D3YIB8J8/DAfwwkI4IxpLuWeGMZrXkJBusiRJR9gKYJ27PrJ8TpZi',
+      };
       mockUsersService.findByEmail.mockResolvedValue(null);
-      mockUsersService.create.mockResolvedValue(mockUser);
+      mockUsersService.create.mockResolvedValue(createdUser);
       mockOtpService.generateOtp.mockResolvedValue('123456');
       mockMailService.sentOtpEmail.mockResolvedValue(undefined);
       mockJwtAuthService.generateTokens.mockResolvedValue(mockTokens);
@@ -110,29 +126,31 @@ describe('AuthService', () => {
       expect(usersService.findByEmail).toHaveBeenCalledWith(signupDto.email);
       expect(usersService.create).toHaveBeenCalledWith(signupDto);
       expect(otpService.generateOtp).toHaveBeenCalledWith(
-        mockUser.id,
-        mockUser.email,
+        createdUser.id,
+        createdUser.email,
       );
       expect(mailService.sentOtpEmail).toHaveBeenCalledWith(
-        mockUser.email,
+        createdUser.email,
         '123456',
-        `${mockUser.firstName} ${mockUser.lastName}`,
+        `${createdUser.firstName} ${createdUser.lastName}`,
       );
-      // expect(result).toEqual(
-      //   expect.objectContaining({
-      //     message:
-      //       'Registration successful. Please check your mail for verification Otp',
-      //     tokens: mockTokens,
-      //     user: mockUser,
-      //   }),
-      // );
+      expect(result).toEqual(
+        expect.objectContaining({
+          message:
+            'Registration successful. Please check your mail for verification Otp',
+          tokens: mockTokens,
+          user: createdUser,
+        }),
+      );
     });
     it('should throw AuthenticationError if email exists', async () => {
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
       await expect(service.signup(signupDto)).rejects.toThrow(
         AuthenticationError,
       );
-      // await expect(service.signup).rejects.toThrow('Invalid credentials');
+      await expect(service.signup(signupDto)).rejects.toThrow(
+        'Invalid credentials',
+      );
     });
 
     it('should handle errors during OTP generation', async () => {
@@ -143,6 +161,85 @@ describe('AuthService', () => {
       );
       await expect(service.signup(signupDto)).rejects.toThrow(
         'OTP generation failed',
+      );
+    });
+  });
+
+  describe('login', () => {
+    const loginDto: LoginDto = {
+      email: 'test@example.com',
+      password: 'Password12345',
+    };
+
+    const mockUserWithPassword = {
+      ...mockUser,
+      password: '$2b$12$hashedPassword123',
+    };
+
+    it('should login successfully', async () => {
+      mockUsersService.findByEmail.mockResolvedValue(null);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockJwtAuthService.generateTokens.mockResolvedValue(mockTokens);
+
+      const result = await service.login(loginDto);
+
+      expect(usersService.findByEmail).toHaveBeenCalledWith(loginDto.email);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        loginDto.password,
+        mockUserWithPassword.password,
+      );
+      expect(result).toBe({
+        message: 'Login successful',
+        tokens: mockTokens,
+        user: expect.objectContaining({
+          id: mockUser.id,
+          email: mockUser.email,
+          firstName: mockUser.firstName,
+          lastName: mockUser.lastName,
+          phoneNumber: mockUser.phoneNumber,
+          isActive: true,
+          isEmailVerified: true,
+        }),
+      });
+      expect(result.user.password).toBeUndefined();
+    });
+
+    it('should throw AuthenticationError if email exists', async () => {
+      mockUsersService.findByEmail.mockResolvedValue(null);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Invalid username or password',
+      );
+    });
+    it('should throw AuthenticationError if password is wrong', async () => {
+      mockUsersService.findByEmail.mockResolvedValue(mockUserWithPassword);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Invalid username or password',
+      );
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        loginDto.password,
+        mockUserWithPassword.password,
+      );
+    });
+    it('should throw AuthenticationError if user is not active and not verified', async () => {
+      const inactiveUser = {
+        ...mockUserWithPassword,
+        isActive: false,
+        isEmailVerified: false,
+      };
+      mockUsersService.findByEmail.mockResolvedValue(inactiveUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      await expect(service.login(loginDto)).rejects.toThrow(
+        AuthenticationError,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'User is not active and verified. Please verify your email',
       );
     });
   });
@@ -176,9 +273,9 @@ describe('AuthService', () => {
         isEmailVerified: true,
         emailVerifiedAt: expect.any(Date),
       });
-      // expect(result.message).toBe(
-      //   'Email verified successfully. You can now login.',
-      // );
+      expect(result.message).toBe(
+        'Email verified successfully. You can now login.',
+      );
     });
     it('should throw AuthenticationError for invalid OTP', async () => {
       mockOtpService.verifyOtp.mockResolvedValue(false);

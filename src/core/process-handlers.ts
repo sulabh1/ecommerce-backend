@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-base-to-string */
-/* eslint-disable @typescript-eslint/no-misused-promises */
-// src/core/process-handlers.ts
 import { Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 

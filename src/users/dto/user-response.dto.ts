@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../entities/user.entity';
 

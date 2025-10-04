@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { InjectRepository } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
 import { Repository } from 'typeorm';

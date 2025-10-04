@@ -1,6 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
 
-// src/errors/custom.errors.ts
 export class AppError extends Error {
   constructor(
     public message: string,
