@@ -1,6 +1,6 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -15,10 +15,9 @@ import { ErrorsModule } from './errors/errors.module';
       envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
     }),
     TypeOrmModule.forRootAsync({
-      useFactory: () => {
-        const config = createDatabaseConfig();
-        return config;
-      },
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => createDatabaseConfig(),
+      inject: [ConfigService],
     }),
     ErrorsModule,
     UsersModule,
