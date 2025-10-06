@@ -7,8 +7,7 @@ services:
     buildCommand: |
       npm ci
       npm run build
-      npm run migration:run
-    startCommand: npm run start:prod
+    startCommand: npx typeorm migration:run -d dist/src/data-source.js && node dist/src/main
     healthCheckPath: /api/health
     autoDeploy: true
 

@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthService } from './jwt.service';
 import { AuthController } from './auth.controller';
 import { OtpService } from './otp.service';
-import { MyMailerModule } from 'src/mailer/mailer.modules';
+import { MyMailerModule } from '../mailer/mailer.modules';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
 import { OtpRepository } from './otp.repository';
