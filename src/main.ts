@@ -30,7 +30,9 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
 
-  app.enableCors();
+  app.enableCors({
+    origin: '*',
+  });
   await app.listen(port);
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
   logger.log(`📚 Swagger documentation: http://localhost:${port}/api/v1/docs`);
