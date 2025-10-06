@@ -17,7 +17,10 @@ export const setupSwagger = (app: INestApplication): void => {
       'JWT-auth',
     )
     .addServer('http://localhost:3000', 'Development Server')
-    .addServer('something', 'Production Server')
+    .addServer(
+      'https://ecommerce-backend-1-aq84.onrender.com',
+      'Production Server',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
