@@ -18,7 +18,7 @@ export const setupSwagger = (app: INestApplication): void => {
     )
     .addServer('http://localhost:3000', 'Development Server')
     .addServer(
-      'https://ecommerce-backend-1-aq84.onrender.com',
+      'https://ecommerce-backend-2f9n.onrender.com',
       'Production Server',
     )
     .build();
