@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ecommerce-backend
+    runtime: node
+    region: ohio
+    plan: free
+    buildCommand: |
+      npm ci
+      npm run build
+      npm run migration:run
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+databases:
+  - name: ecommerce-db
+    plan: free
+    databaseName: ecommerce_prod
