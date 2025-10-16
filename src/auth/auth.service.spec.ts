@@ -183,7 +183,7 @@ describe('AuthService', () => {
     };
 
     it('should login successfully', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue(mockUserWithPassword);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockJwtAuthService.generateTokens.mockResolvedValue(mockTokens);
 
@@ -194,8 +194,8 @@ describe('AuthService', () => {
         loginDto.password,
         mockUserWithPassword.password,
       );
-      expect(result).toBe({
-        message: 'Login successful',
+      expect(result).toEqual({
+        message: 'Login successful.',
         tokens: mockTokens,
         user: expect.objectContaining({
           id: mockUser.id,
